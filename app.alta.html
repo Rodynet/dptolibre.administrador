@@ -103,22 +103,25 @@
         );
 
         function AdminOnboardingApp() {
-            // VIEWS: login, role_selection, biometric, migration_choice, chat_property, optional_contract, chat_tenant, admin_home
+            // VIEWS: login, role_selection, biometric, migration_choice, portfolio_count_check, chat_property, owner_link, optional_contract, chat_tenant, admin_home
             const [view, setView] = useState('login'); 
             const [emailInput, setEmailInput] = useState('');
             const [migrationMethod, setMigrationMethod] = useState(null); // 'excel', 'crm', 'manual'
+            const [propertyCount, setPropertyCount] = useState(1);
             
-            // Chat IA y datos recolectados para Propiedad y Contrato/Inquilino
+            // Chat IA y datos recolectados
             const [chatStep, setChatStep] = useState(0); 
             const [isTyping, setIsTyping] = useState(false);
             const [chatInput, setChatInput] = useState("");
             
-            // Datos del Activo
+            // Datos del Activo Actual
             const [propAddress, setPropAddress] = useState("");
             const [propFeatures, setPropFeatures] = useState("");
             
+            // Datos del Propietario (Nuevo paso requerido)
+            const [ownerInput, setOwnerInput] = useState("");
+            
             // Datos del Contrato Opcional
-            const [hasContract, setHasContract] = useState(false);
             const [contractRent, setContractRent] = useState("");
             
             // Datos del Inquilino AI
@@ -129,7 +132,7 @@
 
             useEffect(() => {
                 if (chatScrollRef.current) chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-            }, [chatStep, isTyping]);
+            }, [chatStep, isTyping, view]);
 
             const advanceChat = (nextStep, delay = 800) => {
                 setIsTyping(true);
@@ -150,7 +153,14 @@
                         advanceChat(1);
                     } else if (chatStep === 1) {
                         setPropFeatures(val);
-                        advanceChat(2); // Pregunta si desea cargar contrato opcional
+                        // Pasa al siguiente subflujo: Propietario
+                        setView('owner_link');
+                        setChatStep(0);
+                    }
+                } else if (view === 'owner_link') {
+                    if (chatStep === 0) {
+                        setOwnerInput(val);
+                        advanceChat(1);
                     }
                 } else if (view === 'optional_contract') {
                     if (chatStep === 0) {
@@ -163,7 +173,7 @@
                         advanceChat(1);
                     } else if (chatStep === 1) {
                         setTenantEmail(val);
-                        advanceChat(2); // Éxito total y pase al Home
+                        advanceChat(2); // Éxito de unidad cargada
                     }
                 }
             };
@@ -172,7 +182,7 @@
             const LoginView = () => (
                 <div className="mobile-shell bg-white flex flex-col p-8 justify-center animate-in text-center relative">
                     <div className="absolute top-4 right-4 bg-blue-50 text-[#0055DD] text-[9px] font-black uppercase px-2.5 py-1 rounded-md tracking-wider">
-                        DptoLibre OS • Admin V3.0
+                        DptoLibre OS • Admin V3.2
                     </div>
                     <Logo />
                     <h1 className="text-xl font-black mt-6 text-[#0D1B4B] uppercase tracking-tighter">PORTAL INMOBILIARIAS</h1>
@@ -239,7 +249,7 @@
                 </div>
             );
 
-            // --- 3. VALIDACIÓN BIOMÉTRICA (POR ÚNICA VEZ) ---
+            // --- 3. VALIDACIÓN BIOMÉTRICA ---
             const BiometricView = () => (
                 <div className="mobile-shell bg-white flex flex-col p-8 justify-center items-center text-center animate-in">
                     <div className="w-20 h-20 bg-blue-50 text-[#0055DD] rounded-3xl flex items-center justify-center mb-6 shadow-inner">
@@ -263,7 +273,7 @@
                 </div>
             );
 
-            // --- 4. SELECCIÓN DE MIGRACIÓN (CRM / EXCEL / MANUAL) ---
+            // --- 4. SELECCIÓN DE MIGRACIÓN ---
             const MigrationChoiceView = () => (
                 <div className="mobile-shell bg-white flex flex-col p-6 animate-in justify-between">
                     <header className="pt-4 text-center">
@@ -300,7 +310,12 @@
                     <button 
                         onClick={() => {
                             if (!migrationMethod) { alert("Por favor seleccioná un método de migración."); return; }
-                            setView('chat_property');
+                            if (migrationMethod === 'manual') {
+                                setView('portfolio_count_check');
+                            } else {
+                                alert("Archivo/CRM procesado con éxito. Se importaron 18 unidades.");
+                                setView('admin_home');
+                            }
                         }} 
                         className="w-full bg-[#0055DD] text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                     >
@@ -309,7 +324,45 @@
                 </div>
             );
 
-            // --- 5. CHAT IA - CARGA DE PROPIEDAD ---
+            // --- 5. VERIFICACIÓN DE CANTIDAD DE PROPIEDADES (LÓGICA > 5) ---
+            const PortfolioCountCheckView = () => (
+                <div className="mobile-shell bg-white flex flex-col p-8 animate-in justify-center text-center">
+                    <div className="w-16 h-16 bg-blue-50 text-[#0055DD] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <Icon name="building-2" size={32} />
+                    </div>
+                    <h2 className="text-2xl font-black text-[#0D1B4B] uppercase tracking-tighter mb-2">¿Cuántas propiedades vas a cargar?</h2>
+                    <p className="text-slate-400 text-xs mb-8">Seleccioná la cantidad aproximada para configurar tu asistente.</p>
+                    
+                    <div className="flex gap-3 justify-center mb-8">
+                        {[1, 3, 5, 12].map(num => (
+                            <button 
+                                key={num}
+                                onClick={() => setPropertyCount(num)}
+                                className={`w-14 h-14 rounded-2xl font-black text-lg transition-all ${propertyCount === num ? 'bg-[#0055DD] text-white shadow-lg' : 'bg-slate-50 text-slate-700 border'}`}
+                            >
+                                {num}
+                            </button>
+                        ))}
+                    </div>
+
+                    {propertyCount > 5 ? (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-left mb-6 text-xs text-amber-800 leading-relaxed">
+                            ⚠️ Al tener más de 5 propiedades, te sugerimos utilizar nuestra <b>Consola Web o Carga Masiva por Excel</b> para ahorrar tiempo operativo. Igualmente podés continuar aquí.
+                        </div>
+                    ) : (
+                        <p className="text-xs text-slate-500 mb-8 italic">Carga guiada propiedad por propiedad optimizada para móvil.</p>
+                    )}
+
+                    <button 
+                        onClick={() => { setView('chat_property'); setChatStep(0); }} 
+                        className="w-full bg-[#0055DD] text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                    >
+                        Comenzar Carga de Activos
+                    </button>
+                </div>
+            );
+
+            // --- 6. CHAT IA - CARGA DE PROPIEDAD ---
             const ChatPropertyView = () => (
                 <div className="mobile-shell bg-slate-50 flex flex-col animate-in">
                     <header className="p-4 bg-white border-b flex items-center justify-between">
@@ -327,7 +380,7 @@
 
                     <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-32">
                         <div className="bot-bubble animate-bubble">
-                            <p>¡Hola! Vamos a dar de alta la primera propiedad en tu cartera.</p>
+                            <p>¡Hola! Vamos a dar de alta una nueva propiedad en tu cartera.</p>
                             <p className="mt-1 text-[#0055DD] font-bold italic">¿Cuál es la dirección exacta del inmueble?</p>
                         </div>
 
@@ -344,25 +397,6 @@
                                     <p className="font-black text-slate-800 text-xs">{propAddress}</p>
                                 </div>
                                 <p className="font-bold text-slate-700">¿Querés agregar características extra? (ej: cochera, 2 dormitorios).</p>
-                            </div>
-                        )}
-
-                        {chatStep >= 2 && <div className="user-bubble animate-bubble">{propFeatures}</div>}
-
-                        {chatStep === 2 && !isTyping && (
-                            <div className="bot-bubble animate-bubble space-y-3">
-                                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
-                                    <div className="flex items-center gap-2 text-emerald-700 font-black text-xs uppercase">
-                                        <Icon name="check-circle" size={16} /> Propiedad Asociada a tu Cartera
-                                    </div>
-                                    <p className="text-xs text-emerald-800">El inmueble fue guardado correctamente.</p>
-                                    <button 
-                                        onClick={() => { setHasContract(true); setView('optional_contract'); setChatStep(0); }} 
-                                        className="w-full mt-2 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md"
-                                    >
-                                        Continuar: Cargar Contrato y Inquilino (Opcional)
-                                    </button>
-                                </div>
                             </div>
                         )}
 
@@ -397,7 +431,92 @@
                 </div>
             );
 
-            // --- 6. OPCIONAL: CARGA DE CONTRATO ---
+            // --- 7. VÍNCULO DE PROPIETARIO (PRIMERO EL DUEÑO) ---
+            const OwnerLinkView = () => (
+                <div className="mobile-shell bg-slate-50 flex flex-col animate-in">
+                    <header className="p-4 bg-white border-b flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                                <Icon name="shield" size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Asistente DptoLibre</h3>
+                                <p className="text-[9px] text-indigo-500 font-bold uppercase">Paso 2 de 3 • Propietario</p>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-32">
+                        <div className="bot-bubble animate-bubble">
+                            <p>Propiedad asociada con éxito a tu cartera.</p>
+                            <p className="mt-1 text-[#0055DD] font-bold italic">¿Quién es el propietario de este inmueble? (Ingresá su DNI, mail o celular).</p>
+                        </div>
+
+                        {ownerInput && <div className="user-bubble animate-bubble">{ownerInput}</div>}
+
+                        {ownerInput && !isTyping && (
+                            <div className="bot-bubble animate-bubble space-y-3">
+                                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
+                                    <div className="flex items-center gap-2 text-emerald-700 font-black text-xs uppercase">
+                                        <Icon name="check-circle" size={16} /> Propietario Vinculado
+                                    </div>
+                                    <p className="text-xs text-emerald-800">El dueño fue asociado correctamente a la unidad.</p>
+                                    <button 
+                                        onClick={() => { setView('optional_contract'); setChatStep(0); }} 
+                                        className="w-full mt-2 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md"
+                                    >
+                                        Continuar: Cargar Contrato (Opcional)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {isTyping && (
+                            <div className="bot-bubble flex items-center gap-1.5 py-3 w-max">
+                                <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
+                            </div>
+                        )}
+                    </div>
+
+                    {!ownerInput && !isTyping && (
+                        <footer className="p-4 bg-white border-t sticky bottom-0 z-20">
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    value={chatInput}
+                                    onChange={(e) => setChatInput(e.target.value)}
+                                    onKeyDown={(e) => { 
+                                        if (e.key === 'Enter' && chatInput.trim()) {
+                                            setOwnerInput(chatInput.trim());
+                                            setChatInput("");
+                                            setIsTyping(true);
+                                            setTimeout(() => setIsTyping(false), 800);
+                                        } 
+                                    }}
+                                    placeholder="ej: roberto@email.com o DNI..."
+                                    className="flex-1 bg-slate-50 border px-4 py-3 rounded-xl text-sm font-bold outline-none focus:border-[#0055DD]"
+                                    autoFocus
+                                />
+                                <button 
+                                    onClick={() => {
+                                        if (chatInput.trim()) {
+                                            setOwnerInput(chatInput.trim());
+                                            setChatInput("");
+                                            setIsTyping(true);
+                                            setTimeout(() => setIsTyping(false), 800);
+                                        }
+                                    }} 
+                                    className="bg-[#0055DD] text-white w-12 h-12 rounded-xl flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0"
+                                >
+                                    <Icon name="send" size={18} />
+                                </button>
+                            </div>
+                        </footer>
+                    )}
+                </div>
+            );
+
+            // --- 8. OPCIONAL: CARGA DE CONTRATO ---
             const OptionalContractView = () => (
                 <div className="mobile-shell bg-slate-50 flex flex-col animate-in">
                     <header className="p-4 bg-white border-b flex items-center justify-between">
@@ -407,7 +526,7 @@
                             </div>
                             <div>
                                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Asistente DptoLibre</h3>
-                                <p className="text-[9px] text-indigo-500 font-bold uppercase">Paso 2 de 3 • Contrato</p>
+                                <p className="text-[9px] text-indigo-500 font-bold uppercase">Paso 3 de 3 • Contrato</p>
                             </div>
                         </div>
                     </header>
@@ -487,7 +606,7 @@
                 </div>
             );
 
-            // --- 7. CHAT IA - INVITACIÓN DE INQUILINO ---
+            // --- 9. CHAT IA - INVITACIÓN DE INQUILINO ---
             const ChatTenantView = () => (
                 <div className="mobile-shell bg-slate-50 flex flex-col animate-in">
                     <header className="p-4 bg-white border-b flex items-center justify-between">
@@ -497,14 +616,14 @@
                             </div>
                             <div>
                                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">Asistente DptoLibre</h3>
-                                <p className="text-[9px] text-emerald-500 font-bold uppercase">Paso 3 de 3 • Inquilino</p>
+                                <p className="text-[9px] text-emerald-500 font-bold uppercase">Último Paso • Inquilino</p>
                             </div>
                         </div>
                     </header>
 
                     <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-32">
                         <div className="bot-bubble animate-bubble">
-                            <p>¡Excelente! Ya configuramos la unidad y el contrato.</p>
+                            <p>¡Excelente! Ya configuramos la unidad, el dueño y el contrato.</p>
                             <p className="mt-1 text-[#0055DD] font-bold italic">¿Cuál es el nombre completo del inquilino?</p>
                         </div>
 
@@ -522,10 +641,10 @@
                             <div className="bot-bubble animate-bubble space-y-4">
                                 <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-2">
                                     <div className="flex items-center gap-2 text-emerald-700 font-black text-xs uppercase">
-                                        <Icon name="check-circle" size={16} /> ¡Onboarding de Administrador Exitoso!
+                                        <Icon name="check-circle" size={16} /> ¡Unidad Cargada con Éxito!
                                     </div>
                                     <p className="text-xs text-emerald-800 leading-relaxed">
-                                        Se le envió una invitación formal a <b>{tenantName}</b>. Tu cartera ya está activa.
+                                        Se le envió una invitación formal a <b>{tenantName}</b>.
                                     </p>
                                     <button onClick={() => setView('admin_home')} className="w-full mt-2 py-3 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-md">
                                         Ingresar a la Consola de Administración
@@ -565,7 +684,7 @@
                 </div>
             );
 
-            // --- 8. HOME DEL ADMINISTRADOR ---
+            // --- 10. HOME DEL ADMINISTRADOR ---
             const AdminHomeView = () => (
                 <div className="mobile-shell bg-[#F0F2F6] flex flex-col animate-in overflow-y-auto no-scrollbar pb-24">
                     <header className="p-6 bg-slate-900 text-white flex justify-between items-center rounded-b-[2.5rem] shadow-xl">
@@ -605,7 +724,7 @@
                                 </div>
                                 <div>
                                     <h5 className="font-black text-slate-800 text-xs">{tenantName || "Marcos Galperin"} • {propAddress || "Caseros 1230"}</h5>
-                                    <p className="text-[10px] text-slate-500 mt-0.5">Legajo verificado 100%. Inquilino con firma digital lista.</p>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">Legajo verificado 100%. Propietario e Inquilino vinculados.</p>
                                 </div>
                                 <button onClick={() => alert("¡OK Final emitido! Contrato activado y factura ARCA generada.")} className="w-full bg-emerald-500 text-slate-900 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-md">
                                     Dar OK Final y Activar
@@ -617,7 +736,7 @@
                         <div className="bg-white p-5 rounded-3xl border shadow-sm space-y-3">
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Acciones Operativas</h4>
                             <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => alert("Generando QR masivo...")} className="p-3 bg-slate-50 rounded-2xl border text-left hover:bg-blue-50 transition-colors">
+                                <button onClick={() => alert("Generando QR masivo para compartir con dueños e inquilinos...")} className="p-3 bg-slate-50 rounded-2xl border text-left hover:bg-blue-50 transition-colors">
                                     <Icon name="qr-code" size={20} className="text-[#0055DD] mb-1" />
                                     <p className="text-xs font-black text-slate-800">QRs de Cartera</p>
                                     <p className="text-[9px] text-slate-400">Imprimibles / WhatsApp</p>
@@ -654,7 +773,9 @@
                         {view === 'role_selection' && <RoleSelectionView />}
                         {view === 'biometric' && <BiometricView />}
                         {view === 'migration_choice' && <MigrationChoiceView />}
+                        {view === 'portfolio_count_check' && <PortfolioCountCheckView />}
                         {view === 'chat_property' && <ChatPropertyView />}
+                        {view === 'owner_link' && <OwnerLinkView />}
                         {view === 'optional_contract' && <OptionalContractView />}
                         {view === 'chat_tenant' && <ChatTenantView />}
                         {view === 'admin_home' && <AdminHomeView />}
@@ -668,3 +789,4 @@
     </script>
 </body>
 </html>
+```eof
