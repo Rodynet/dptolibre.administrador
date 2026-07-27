@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DptoLibre - SuperApp Administrador V4.5</title>
+    <title>DptoLibre - SuperApp Administrador V4.8</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -42,7 +42,6 @@
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        
         .animate-in { animation: fadeIn 0.3s ease-out; }
         .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         
@@ -64,30 +63,115 @@
         function AdminSuperApp() {
             const [activeTab, setActiveTab] = useState('torre');
             const [isFabOpen, setIsFabOpen] = useState(false);
+            const [isProfileOpen, setIsProfileOpen] = useState(false);
+            const [withdrawMode, setWithdrawMode] = useState(null); // 'dueños' or 'comisiones'
 
-            // --- 1. VISTA TORRE (DASHBOARD & TESORERÍA) ---
+            // --- HEADER COMÚN & PERFIL ---
+            const AppHeader = () => (
+                <header className="p-6 bg-slate-900 text-white flex justify-between items-center rounded-b-[2rem] shadow-xl relative z-10">
+                    <div className="absolute top-3 right-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
+                        V4.8
+                    </div>
+                    <div className="flex items-center gap-3 mt-4" onClick={() => setIsProfileOpen(true)}>
+                        <div className="w-12 h-12 rounded-full border-2 border-emerald-400 overflow-hidden bg-slate-800 flex-shrink-0 relative cursor-pointer active:scale-95 transition">
+                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" alt="Admin" className="w-full h-full object-cover" />
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00D1FF] border-2 border-slate-900 rounded-full"></div>
+                        </div>
+                        <div className="cursor-pointer">
+                            <h3 className="text-sm font-black leading-tight tracking-tight flex items-center gap-1">
+                                Estudio Raíces <Icon name="chevron-down" size={12} className="text-slate-400"/>
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Admin Partner</p>
+                        </div>
+                    </div>
+                    <button className="relative w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-xl transition mt-4">
+                        <Icon name="bell" size={20} className="text-slate-300" />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                    </button>
+                </header>
+            );
+
+            // --- MODAL DE LIQUIDACIÓN ---
+            const WithdrawModal = () => {
+                if (!withdrawMode) return null;
+                const isDueños = withdrawMode === 'dueños';
+                const [montoType, setMontoType] = useState('total'); // 'total' | 'parcial'
+                const [customMonto, setCustomMonto] = useState(isDueños ? "3000000" : "1200000");
+                const [contracts, setContracts] = useState([
+                    { id: 1, addr: "Av. Colón 450", amount: 450000, checked: true },
+                    { id: 2, addr: "San Martín 150", amount: 350000, checked: true },
+                    { id: 3, addr: "Caseros 1230", amount: 400000, checked: true }
+                ]);
+
+                return (
+                    <div className="absolute inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-sm animate-in">
+                        <div className="bg-white w-full rounded-t-[2.5rem] p-6 shadow-2xl slide-up flex flex-col h-[85vh]">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h3 className="text-xl font-black text-[#0D1B4B] tracking-tighter leading-none">
+                                        {isDueños ? "Derivar a Dueños" : "Retirar Comisiones"}
+                                    </h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                        Saldo Disp: {isDueños ? "$3.000.000" : "$1.200.000"}
+                                    </p>
+                                </div>
+                                <button onClick={() => setWithdrawMode(null)} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center"><Icon name="x" size={16}/></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-5">
+                                {/* Selección de Monto */}
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monto a Operar</h4>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setMontoType('total')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border ${montoType === 'total' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}`}>
+                                            Rendir Total
+                                        </button>
+                                        <button onClick={() => setMontoType('parcial')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border ${montoType === 'parcial' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}`}>
+                                            Monto Parcial
+                                        </button>
+                                    </div>
+                                    {montoType === 'parcial' && (
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
+                                            <input type="number" value={customMonto} onChange={(e) => setCustomMonto(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-8 py-3.5 rounded-xl text-lg font-black text-slate-800 outline-none focus:border-[#0055DD]" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Selección de Contratos */}
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contratos a Liquidar</h4>
+                                        <span className="text-[9px] font-bold text-[#0055DD]">{contracts.filter(c=>c.checked).length} seleccionados</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {contracts.map(c => (
+                                            <label key={c.id} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${c.checked ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100 opacity-60'}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <input type="checkbox" checked={c.checked} onChange={() => setContracts(contracts.map(x => x.id === c.id ? {...x, checked: !x.checked} : x))} className="w-4 h-4 rounded text-[#0055DD] focus:ring-[#0055DD]" />
+                                                    <span className="font-black text-xs text-slate-800">{c.addr}</span>
+                                                </div>
+                                                <span className="font-bold text-slate-500 text-xs">${c.amount.toLocaleString()}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onClick={() => { alert("Operación de transferencia iniciada."); setWithdrawMode(null); }} className="w-full bg-[#0D1B4B] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl mt-4 active:scale-95 transition">
+                                Confirmar Transferencia
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- VISTAS PRINCIPALES ---
+            
             const TorreView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in">
-                    <header className="p-6 bg-slate-900 text-white flex justify-between items-center rounded-b-[2.5rem] shadow-xl relative z-10">
-                        <div className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
-                            V4.5
-                        </div>
-                        <div className="flex items-center gap-3 mt-4">
-                            <div className="w-12 h-12 rounded-full border-2 border-emerald-400 overflow-hidden bg-slate-800 flex-shrink-0 relative">
-                                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" alt="Admin" className="w-full h-full object-cover" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black leading-tight tracking-tight">Estudio Raíces</h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Admin Partner</p>
-                            </div>
-                        </div>
-                        <button className="relative w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-xl transition mt-4">
-                            <Icon name="bell" size={20} className="text-slate-300" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
-                        </button>
-                    </header>
-
-                    <main className="p-6 space-y-6 -mt-4 relative z-0">
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
+                    <AppHeader />
+                    <main className="p-6 space-y-6 -mt-4 relative z-0 flex-1">
                         {/* Tesorería Desglosada */}
                         <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
                             <div className="flex justify-between items-start">
@@ -113,169 +197,210 @@
                             </div>
 
                             <div className="flex flex-col gap-2">
-                                <button onClick={() => alert("Barrido automático ejecutado. Alquileres transferidos a las cuentas de los dueños.")} className="w-full bg-[#0D1B4B] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex justify-center items-center gap-2 active:scale-95 transition-all">
+                                <button onClick={() => setWithdrawMode('dueños')} className="w-full bg-[#0D1B4B] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex justify-center items-center gap-2 active:scale-95 transition-all">
                                     <Icon name="send" size={14}/> Derivar Alquileres a Dueños
                                 </button>
-                                <button onClick={() => alert("Retiro de honorarios a tu CBU programado.")} className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
+                                <button onClick={() => setWithdrawMode('comisiones')} className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
                                     Retirar Mis Comisiones
                                 </button>
                             </div>
                         </div>
 
                         {/* Torre Métricas Rápidas */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
-                                <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2"><Icon name="check-circle-2" size={16}/></span>
-                                <h5 className="text-xl font-black text-slate-800">42</h5>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Activas</p>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center px-1">
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Indicadores de Cartera</h4>
+                                <button onClick={() => setActiveTab('propiedades')} className="text-[10px] font-black text-[#0055DD] uppercase bg-blue-50 px-2 py-1 rounded">Ver todo</button>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
-                                <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-2"><Icon name="key" size={16}/></span>
-                                <h5 className="text-xl font-black text-slate-800">3</h5>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Vacantes</p>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                                    <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2"><Icon name="check-circle-2" size={16}/></span>
+                                    <h5 className="text-xl font-black text-slate-800">42</h5>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Activas</p>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
+                                    <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-2"><Icon name="key" size={16}/></span>
+                                    <h5 className="text-xl font-black text-slate-800">3</h5>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Vacantes</p>
+                                </div>
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center border-b-2 border-b-rose-500">
+                                    <span className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-2"><Icon name="alert-triangle" size={16}/></span>
+                                    <h5 className="text-xl font-black text-slate-800">2</h5>
+                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">En Mora</p>
+                                </div>
                             </div>
-                            <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center border-b-2 border-b-rose-500">
-                                <span className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-2"><Icon name="alert-triangle" size={16}/></span>
-                                <h5 className="text-xl font-black text-slate-800">2</h5>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">En Mora</p>
+                        </div>
+
+                        {/* Tarjetas de Acción / Atención */}
+                        <div className="space-y-3">
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Atención Requerida</h4>
+                            
+                            <div className="bg-white p-4 rounded-[1.5rem] border shadow-sm border-l-4 border-l-rose-500 flex items-start gap-4">
+                                <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
+                                    <Icon name="clock-3" size={20} />
+                                </div>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-start">
+                                        <h5 className="font-black text-slate-800 text-xs">Mora: Av. Colón 450</h5>
+                                        <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">Día 6</span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">Inquilino: L. Martínez. La caución está lista para gatillarse.</p>
+                                    <div className="flex gap-2 mt-3">
+                                        <button className="flex-1 bg-rose-600 text-white py-2 rounded-lg font-black text-[9px] uppercase tracking-wider shadow-sm">Ejecutar Póliza</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </main>
                 </div>
             );
 
-            // --- 2. VISTA CARTERA (PROPIEDADES & USUARIOS) ---
-            const CarteraView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-[#F0F2F6]">
-                    <header className="p-6 bg-white border-b sticky top-0 z-10 flex justify-between items-center">
-                        <h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Mi Cartera</h2>
-                        <span className="bg-blue-50 text-[#0055DD] px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">45 Unidades</span>
-                    </header>
-                    <div className="p-6 space-y-4">
-                        {[
-                            { addr: "Av. Colón 450, 10C", tenant: "Lucía Martínez", owner: "Marcos Galperin", status: "Alquilada", statusColor: "emerald" },
-                            { addr: "Caseros 1230, 4B", tenant: "Vacante", owner: "Eduardo Costantini", status: "Vacante", statusColor: "amber" },
-                            { addr: "Velez Sarsfield 30, 2A", tenant: "Juan Pérez", owner: "Roberto Sánchez", status: "Mora (Día 6)", statusColor: "rose" },
-                            { addr: "San Martín 150, 1B", tenant: "Ana Gómez", owner: "Marcos Galperin", status: "Alquilada", statusColor: "emerald" }
-                        ].map((prop, i) => (
-                            <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm">
-                                <div className="flex justify-between items-start mb-3">
-                                    <h4 className="font-black text-slate-800 text-sm">{prop.addr}</h4>
-                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded bg-${prop.statusColor}-50 text-${prop.statusColor}-600`}>{prop.status}</span>
-                                </div>
-                                <div className="flex justify-between text-xs">
-                                    <div className="flex flex-col">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Inquilino</span>
-                                        <span className="font-semibold text-slate-700">{prop.tenant}</span>
-                                    </div>
-                                    <div className="flex flex-col text-right">
-                                        <span className="text-[9px] font-bold text-slate-400 uppercase">Propietario</span>
-                                        <span className="font-semibold text-slate-700">{prop.owner}</span>
-                                    </div>
-                                </div>
+            const PropiedadesView = () => {
+                const [filter, setFilter] = useState('Todas');
+                const props = [
+                    { addr: "Av. Colón 450, 10C", status: "Activa", c: "emerald" },
+                    { addr: "Caseros 1230, 4B", status: "Vacante", c: "amber" },
+                    { addr: "San Martín 150", status: "Mora", c: "rose" },
+                    { addr: "Velez Sarsfield 30", status: "Activa", c: "emerald" }
+                ];
+                const filtered = filter === 'Todas' ? props : props.filter(p => p.status === filter);
+
+                return (
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
+                        <AppHeader />
+                        <div className="p-6 space-y-4 relative z-0 -mt-4">
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                {['Todas', 'Activa', 'Vacante', 'Mora'].map(f => (
+                                    <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition ${filter === f ? 'bg-[#0D1B4B] text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}>{f}</button>
+                                ))}
                             </div>
-                        ))}
+                            <div className="space-y-3">
+                                {filtered.map((p, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`w-10 h-10 bg-${p.c}-50 text-${p.c}-600 rounded-xl flex items-center justify-center`}><Icon name="home" size={20}/></div>
+                                            <div>
+                                                <h4 className="font-black text-slate-800 text-xs">{p.addr}</h4>
+                                                <p className="text-[10px] text-slate-500 mt-0.5">Propiedad {i+1}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded bg-${p.c}-50 text-${p.c}-600`}>{p.status}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const UsuariosView = () => {
+                const [tab, setTab] = useState('Inquilinos');
+                return (
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
+                        <AppHeader />
+                        <div className="p-6 space-y-4 relative z-0 -mt-4">
+                            <div className="flex bg-slate-200/50 p-1 rounded-xl">
+                                {['Inquilinos', 'Propietarios'].map(t => (
+                                    <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase transition ${tab === t ? 'bg-white text-[#0D1B4B] shadow-sm' : 'text-slate-500'}`}>{t}</button>
+                                ))}
+                            </div>
+                            <div className="space-y-3">
+                                {[1,2,3].map((u, i) => (
+                                    <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${tab}${i}`} className="w-full h-full"/></div>
+                                            <div>
+                                                <h4 className="font-black text-slate-800 text-xs">{tab === 'Inquilinos' ? 'Juan Pérez' : 'Marcos Galperin'}</h4>
+                                                <p className="text-[10px] text-slate-500 mt-0.5">Score: {850 + i*10} pts</p>
+                                            </div>
+                                        </div>
+                                        <Icon name="chevron-right" size={16} className="text-slate-300"/>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const DocsView = () => (
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
+                    <AppHeader />
+                    <div className="p-6 space-y-4 relative z-0 -mt-4">
+                        <h2 className="text-lg font-black text-[#0D1B4B] tracking-tighter mb-4">Contratos Activos</h2>
+                        <div className="space-y-3">
+                            {[1,2,3].map((d, i) => (
+                                <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Icon name="file-text" size={20}/></div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 text-xs">CNT-890{i}</h4>
+                                            <p className="text-[10px] text-slate-500 mt-0.5">Vence: 12/2026</p>
+                                        </div>
+                                    </div>
+                                    <Icon name="download" size={18} className="text-[#0055DD]"/>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             );
 
-            // --- 3. VISTA DOCS (CONTRATOS) ---
-            const DocsView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-[#F0F2F6]">
-                    <header className="p-6 bg-white border-b sticky top-0 z-10 flex justify-between items-center">
-                        <h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Contratos</h2>
-                        <Icon name="search" size={20} className="text-slate-400"/>
-                    </header>
-                    <div className="p-6 space-y-4">
-                        {[
-                            { id: "CNT-8901", prop: "Av. Colón 450", date: "Vence: 05/2028", status: "Vigente" },
-                            { id: "CNT-8902", prop: "San Martín 150", date: "Vence: 10/2026", status: "Próx. a Vencer" },
-                            { id: "CNT-8903", prop: "Velez Sarsfield 30", date: "Vence: 12/2027", status: "Vigente" }
-                        ].map((doc, i) => (
-                            <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
-                                        <Icon name="file-text" size={20}/>
+            // --- DRAWER DE PERFIL DE USUARIO ---
+            const ProfileDrawer = () => {
+                if (!isProfileOpen) return null;
+                return (
+                    <div className="absolute inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-sm animate-in">
+                        <div className="bg-white w-full rounded-t-[2.5rem] p-6 shadow-2xl slide-up flex flex-col h-[85vh]">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="flex gap-4 items-center">
+                                    <div className="w-16 h-16 rounded-full border-2 border-[#0055DD] overflow-hidden">
+                                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" className="w-full h-full object-cover" />
                                     </div>
                                     <div>
-                                        <h4 className="font-black text-slate-800 text-xs">{doc.prop}</h4>
-                                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{doc.id} • {doc.date}</p>
+                                        <h3 className="text-xl font-black text-[#0D1B4B] tracking-tighter leading-none">Estudio Raíces</h3>
+                                        <p className="text-xs text-slate-400 font-medium mt-1">admin@raices.com</p>
                                     </div>
                                 </div>
-                                <Icon name="download" size={18} className="text-[#0055DD]"/>
+                                <button onClick={() => setIsProfileOpen(false)} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center"><Icon name="x" size={16}/></button>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            );
 
-            // --- 4. VISTA PERFIL (MICROSITIO DE CONFIGURACIÓN) ---
-            const PerfilView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-white">
-                    <header className="p-6 bg-slate-900 text-white flex flex-col items-center justify-center pt-12 pb-8 rounded-b-[2.5rem]">
-                        <div className="w-20 h-20 rounded-full border-4 border-[#0055DD] overflow-hidden bg-slate-800 relative shadow-xl">
-                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=200&q=80" alt="Admin" className="w-full h-full object-cover" />
-                        </div>
-                        <h2 className="text-xl font-black mt-4">Estudio Raíces</h2>
-                        <p className="text-xs text-slate-400 font-medium">admin@raices.com</p>
-                        <span className="mt-3 bg-[#0055DD]/20 text-[#00D1FF] border border-[#0055DD]/50 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-wider">Cuenta Master (Admin)</span>
-                    </header>
-
-                    <div className="p-6 space-y-6">
-                        {/* Operaciones de Cuenta */}
-                        <div>
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3">Administración de Equipo</h4>
-                            <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                <button onClick={() => alert("Generando link de invitación para nuevo administrador...")} className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><Icon name="user-plus" size={16}/></div>
-                                        <span className="text-sm font-bold text-slate-700">Agregar Administrador</span>
+                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
+                                <div>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">Mi Equipo</h4>
+                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                                        <button className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><Icon name="user-plus" size={16}/></div>
+                                                <span className="text-sm font-bold text-slate-700">Invitar Nuevo Administrador</span>
+                                            </div>
+                                        </button>
                                     </div>
-                                    <Icon name="chevron-right" size={16} className="text-slate-400"/>
-                                </button>
-                                <button onClick={() => alert("Lista de agentes autorizados.")} className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-blue-100 text-[#0055DD] rounded-lg flex items-center justify-center"><Icon name="users" size={16}/></div>
-                                        <span className="text-sm font-bold text-slate-700">Gestionar Permisos</span>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">Seguridad</h4>
+                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
+                                        <button className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center"><Icon name="lock" size={16}/></div>
+                                                <span className="text-sm font-bold text-slate-700">Resetear Contraseña</span>
+                                            </div>
+                                        </button>
                                     </div>
-                                    <Icon name="chevron-right" size={16} className="text-slate-400"/>
-                                </button>
+                                </div>
+                                <div className="pt-4">
+                                    <button onClick={() => {alert("Deslogueado."); setIsProfileOpen(false);}} className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest mb-3 hover:bg-slate-200 transition">
+                                        Cerrar Sesión
+                                    </button>
+                                    <button onClick={() => alert("Solicitud de baja en proceso.")} className="w-full py-4 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 border border-transparent transition">
+                                        Dar de Baja Cuenta
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Seguridad */}
-                        <div>
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3">Seguridad</h4>
-                            <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                <button onClick={() => alert("Flujo de reseteo de contraseña iniciado por mail.")} className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center"><Icon name="lock" size={16}/></div>
-                                        <span className="text-sm font-bold text-slate-700">Resetear Contraseña</span>
-                                    </div>
-                                    <Icon name="chevron-right" size={16} className="text-slate-400"/>
-                                </button>
-                                <button onClick={() => alert("Ajustes de biometría y FaceID.")} className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center"><Icon name="scan-face" size={16}/></div>
-                                        <span className="text-sm font-bold text-slate-700">Biometría (Face ID)</span>
-                                    </div>
-                                    <Icon name="chevron-right" size={16} className="text-slate-400"/>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Zona de Peligro */}
-                        <div className="pt-4">
-                            <button onClick={() => alert("Sesión finalizada.")} className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest mb-3 hover:bg-slate-200 transition">
-                                Cerrar Sesión
-                            </button>
-                            <button onClick={() => confirm("¿Estás seguro que deseas dar de baja toda la cuenta Master? Esta acción es irreversible.")} className="w-full py-4 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 border border-transparent hover:border-rose-100 transition">
-                                Dar de Baja Cuenta
-                            </button>
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
             // --- MENU ACCIÓN FLOTANTE (FAB) ---
             const FabMenu = () => {
@@ -283,19 +408,19 @@
                 return (
                     <div className="absolute inset-0 z-40 flex items-end justify-center pb-28 bg-slate-900/40 backdrop-blur-sm slide-up" onClick={() => setIsFabOpen(false)}>
                         <div className="bg-white w-[90%] rounded-3xl p-6 shadow-2xl flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-2">Crear Nuevo Registro</h3>
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-2">Alta Rápida</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => { alert("Iniciando Asistente: Alta de Propiedad (Flow AI)"); setIsFabOpen(false); }} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center gap-2 hover:bg-emerald-100 transition">
+                                <button onClick={() => { alert("Iniciando Alta de Propiedad"); setIsFabOpen(false); }} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center gap-2">
                                     <Icon name="home" size={24} className="text-emerald-600"/>
                                     <span className="text-[10px] font-black text-emerald-800 uppercase">Propiedad</span>
                                 </button>
-                                <button onClick={() => { alert("Iniciando Asistente: Alta de Inquilino/Propietario"); setIsFabOpen(false); }} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition">
-                                    <Icon name="users" size={24} className="text-[#0055DD]"/>
-                                    <span className="text-[10px] font-black text-[#0055DD] uppercase">Usuario</span>
+                                <button onClick={() => { alert("Iniciando Alta de Usuario"); setIsFabOpen(false); }} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center justify-center gap-2">
+                                    <Icon name="user-plus" size={24} className="text-[#0055DD]"/>
+                                    <span className="text-[10px] font-black text-[#0055DD] uppercase">Inq/Dueño</span>
                                 </button>
-                                <button onClick={() => { alert("Iniciando Asistente: Generación de Contrato Legal"); setIsFabOpen(false); }} className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center gap-2 hover:bg-indigo-100 transition col-span-2">
+                                <button onClick={() => { alert("Iniciando Alta de Contrato"); setIsFabOpen(false); }} className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center gap-2 col-span-2">
                                     <Icon name="file-signature" size={24} className="text-indigo-600"/>
-                                    <span className="text-[10px] font-black text-indigo-800 uppercase">Contrato Nuevo</span>
+                                    <span className="text-[10px] font-black text-indigo-800 uppercase">Nuevo Contrato</span>
                                 </button>
                             </div>
                         </div>
@@ -307,44 +432,41 @@
                 <div className="h-screen w-full flex flex-col items-center justify-center p-4 bg-[#cbd5e1]">
                     <div className="mobile-shell rounded-[3rem] border-[6px] border-white ring-1 ring-slate-200 shadow-2xl">
                         
-                        {/* Area de Contenido Dinámico */}
+                        {/* Contenido Dinámico */}
                         {activeTab === 'torre' && <TorreView />}
-                        {activeTab === 'cartera' && <CarteraView />}
+                        {activeTab === 'propiedades' && <PropiedadesView />}
+                        {activeTab === 'usuarios' && <UsuariosView />}
                         {activeTab === 'docs' && <DocsView />}
-                        {activeTab === 'perfil' && <PerfilView />}
 
-                        {/* Menú Overlay FAB */}
+                        <ProfileDrawer />
+                        <WithdrawModal />
                         <FabMenu />
 
-                        {/* Botón de Acción Flotante (FAB) centralizado */}
-                        <button 
-                            onClick={() => setIsFabOpen(!isFabOpen)}
-                            className={`absolute bottom-[5rem] left-1/2 -translate-x-1/2 w-14 h-14 bg-[#0055DD] text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(0,85,221,0.5)] z-50 transition-transform duration-300 ${isFabOpen ? 'rotate-45 bg-rose-500 shadow-rose-500/50' : 'active:scale-95 hover:-translate-y-1'}`}
-                        >
+                        {/* Botón Flotante (FAB) */}
+                        <button onClick={() => setIsFabOpen(!isFabOpen)} className={`absolute bottom-[5rem] left-1/2 -translate-x-1/2 w-14 h-14 bg-[#0055DD] text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(0,85,221,0.5)] z-40 transition-transform duration-300 ${isFabOpen ? 'rotate-45 bg-rose-500 shadow-rose-500/50' : 'active:scale-95'}`}>
                             <Icon name="plus" size={28} />
                         </button>
 
-                        {/* Nav inferior */}
+                        {/* Nav inferior reformulado */}
                         <nav className="absolute bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-4 flex justify-between items-center pb-8 z-30">
                             <button onClick={() => {setActiveTab('torre'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 ${activeTab === 'torre' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
                                 <Icon name="layout-dashboard" size={22} />
                                 <span className="text-[8px] font-black uppercase tracking-wider">Torre</span>
                             </button>
-                            <button onClick={() => {setActiveTab('cartera'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pr-4 ${activeTab === 'cartera' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                            <button onClick={() => {setActiveTab('propiedades'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pr-2 ${activeTab === 'propiedades' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
                                 <Icon name="building-2" size={22} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">Cartera</span>
+                                <span className="text-[8px] font-black uppercase tracking-wider">Props</span>
                             </button>
                             
-                            {/* Espacio vacío para el FAB */}
-                            <div className="w-12"></div>
+                            <div className="w-10"></div> {/* Espacio FAB */}
 
-                            <button onClick={() => {setActiveTab('docs'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pl-4 ${activeTab === 'docs' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                            <button onClick={() => {setActiveTab('usuarios'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pl-2 ${activeTab === 'usuarios' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                                <Icon name="users" size={22} />
+                                <span className="text-[8px] font-black uppercase tracking-wider">Usrs</span>
+                            </button>
+                            <button onClick={() => {setActiveTab('docs'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 ${activeTab === 'docs' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
                                 <Icon name="file-text" size={22} />
                                 <span className="text-[8px] font-black uppercase tracking-wider">Docs</span>
-                            </button>
-                            <button onClick={() => {setActiveTab('perfil'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 ${activeTab === 'perfil' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
-                                <Icon name="settings" size={22} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">Perfil</span>
                             </button>
                         </nav>
                     </div>
