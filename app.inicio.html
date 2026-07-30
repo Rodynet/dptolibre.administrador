@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>DptoLibre - SuperApp Administrador V4.8</title>
+    <title>DptoLibre - Sistema Operativo V74</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- React & ReactDOM -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
@@ -26,6 +26,7 @@
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: #cbd5e1;
             -webkit-tap-highlight-color: transparent;
+            overflow: hidden;
         }
 
         .mobile-shell {
@@ -42,362 +43,369 @@
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
         .animate-in { animation: fadeIn 0.3s ease-out; }
         .slide-up { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
         
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* Chat Styles */
+        .bot-bubble { @apply bg-white border border-slate-100 p-4 rounded-tr-[1.5rem] rounded-br-[1.5rem] rounded-bl-[1.5rem] shadow-sm max-w-[85%] text-sm font-medium leading-relaxed text-slate-700; }
+        .user-bubble { @apply bg-[#0055DD] text-white p-4 rounded-tl-[1.5rem] rounded-bl-[1.5rem] rounded-br-[1.5rem] shadow-lg max-w-[80%] text-sm font-bold ml-auto; }
+        .typing-dot { width: 5px; height: 5px; background: #94a3b8; border-radius: 50%; animation: typing 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => { if (window.lucide) window.lucide.createIcons(); }, [name, size, className]);
             return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
         };
 
+        // --- DATOS MOCK GLOBALES ---
+        const mockProps = [
+            { id: 1, addr: "Av. Colón 450, 10C", owner: "Marcos Galperin", tenant: "Lucía Martínez", status: "Alquilada", type: "Departamento" },
+            { id: 2, addr: "Caseros 1230, 4B", owner: "Eduardo Costantini", tenant: "Vacante", status: "Vacante", type: "Departamento" },
+            { id: 3, addr: "Velez Sarsfield 30", owner: "Roberto Sánchez", tenant: "Juan Pérez", status: "Mora", type: "Local" }
+        ];
+
+        const mockUsers = [
+            { id: 1, name: "Marcos Galperin", role: "Propietario", email: "marcos@email.com", phone: "+5491100001111", score: 950 },
+            { id: 2, name: "Lucía Martínez", role: "Inquilino", email: "lucia@email.com", phone: "+5493510002222", score: 820 },
+            { id: 3, name: "Juan Pérez", role: "Inquilino", email: "juan@email.com", phone: "+5493510003333", score: 650 }
+        ];
+
+        const mockContracts = [
+            { id: "CNT-8901", prop: "Av. Colón 450", tenant: "Lucía M.", owner: "Marcos G.", date: "Vence: 05/2028", status: "Vigente", rent: "$450.000" },
+            { id: "CNT-8902", prop: "Velez Sarsfield 30", tenant: "Juan P.", owner: "Roberto S.", date: "Vence: 10/2026", status: "En Mora", rent: "$320.000" }
+        ];
+
         function AdminSuperApp() {
-            const [activeTab, setActiveTab] = useState('torre');
+            const [activeTab, setActiveTab] = useState('inicio');
             const [isFabOpen, setIsFabOpen] = useState(false);
-            const [isProfileOpen, setIsProfileOpen] = useState(false);
-            const [withdrawMode, setWithdrawMode] = useState(null); // 'dueños' or 'comisiones'
-
-            // --- HEADER COMÚN & PERFIL ---
-            const AppHeader = () => (
-                <header className="p-6 bg-slate-900 text-white flex justify-between items-center rounded-b-[2rem] shadow-xl relative z-10">
-                    <div className="absolute top-3 right-4 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[9px] font-black uppercase px-2 py-0.5 rounded tracking-wider">
-                        V4.8
-                    </div>
-                    <div className="flex items-center gap-3 mt-4" onClick={() => setIsProfileOpen(true)}>
-                        <div className="w-12 h-12 rounded-full border-2 border-emerald-400 overflow-hidden bg-slate-800 flex-shrink-0 relative cursor-pointer active:scale-95 transition">
-                            <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" alt="Admin" className="w-full h-full object-cover" />
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00D1FF] border-2 border-slate-900 rounded-full"></div>
-                        </div>
-                        <div className="cursor-pointer">
-                            <h3 className="text-sm font-black leading-tight tracking-tight flex items-center gap-1">
-                                Estudio Raíces <Icon name="chevron-down" size={12} className="text-slate-400"/>
-                            </h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Admin Partner</p>
-                        </div>
-                    </div>
-                    <button className="relative w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded-xl transition mt-4">
-                        <Icon name="bell" size={20} className="text-slate-300" />
-                        <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
-                    </button>
-                </header>
-            );
-
-            // --- MODAL DE LIQUIDACIÓN ---
-            const WithdrawModal = () => {
-                if (!withdrawMode) return null;
-                const isDueños = withdrawMode === 'dueños';
-                const [montoType, setMontoType] = useState('total'); // 'total' | 'parcial'
-                const [customMonto, setCustomMonto] = useState(isDueños ? "3000000" : "1200000");
-                const [contracts, setContracts] = useState([
-                    { id: 1, addr: "Av. Colón 450", amount: 450000, checked: true },
-                    { id: 2, addr: "San Martín 150", amount: 350000, checked: true },
-                    { id: 3, addr: "Caseros 1230", amount: 400000, checked: true }
-                ]);
-
-                return (
-                    <div className="absolute inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-sm animate-in">
-                        <div className="bg-white w-full rounded-t-[2.5rem] p-6 shadow-2xl slide-up flex flex-col h-[85vh]">
-                            <div className="flex justify-between items-center mb-6">
-                                <div>
-                                    <h3 className="text-xl font-black text-[#0D1B4B] tracking-tighter leading-none">
-                                        {isDueños ? "Derivar a Dueños" : "Retirar Comisiones"}
-                                    </h3>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                        Saldo Disp: {isDueños ? "$3.000.000" : "$1.200.000"}
-                                    </p>
-                                </div>
-                                <button onClick={() => setWithdrawMode(null)} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center"><Icon name="x" size={16}/></button>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-5">
-                                {/* Selección de Monto */}
-                                <div className="space-y-3">
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monto a Operar</h4>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setMontoType('total')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border ${montoType === 'total' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}`}>
-                                            Rendir Total
-                                        </button>
-                                        <button onClick={() => setMontoType('parcial')} className={`flex-1 py-3 rounded-xl font-black text-[10px] uppercase border ${montoType === 'parcial' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-400'}`}>
-                                            Monto Parcial
-                                        </button>
-                                    </div>
-                                    {montoType === 'parcial' && (
-                                        <div className="relative">
-                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">$</span>
-                                            <input type="number" value={customMonto} onChange={(e) => setCustomMonto(e.target.value)} className="w-full bg-slate-50 border border-slate-200 px-8 py-3.5 rounded-xl text-lg font-black text-slate-800 outline-none focus:border-[#0055DD]" />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Selección de Contratos */}
-                                <div className="space-y-3">
-                                    <div className="flex justify-between items-center">
-                                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contratos a Liquidar</h4>
-                                        <span className="text-[9px] font-bold text-[#0055DD]">{contracts.filter(c=>c.checked).length} seleccionados</span>
-                                    </div>
-                                    <div className="space-y-2">
-                                        {contracts.map(c => (
-                                            <label key={c.id} className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition ${c.checked ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100 opacity-60'}`}>
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox" checked={c.checked} onChange={() => setContracts(contracts.map(x => x.id === c.id ? {...x, checked: !x.checked} : x))} className="w-4 h-4 rounded text-[#0055DD] focus:ring-[#0055DD]" />
-                                                    <span className="font-black text-xs text-slate-800">{c.addr}</span>
-                                                </div>
-                                                <span className="font-bold text-slate-500 text-xs">${c.amount.toLocaleString()}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button onClick={() => { alert("Operación de transferencia iniciada."); setWithdrawMode(null); }} className="w-full bg-[#0D1B4B] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl mt-4 active:scale-95 transition">
-                                Confirmar Transferencia
-                            </button>
-                        </div>
-                    </div>
-                );
-            };
-
-            // --- VISTAS PRINCIPALES ---
             
-            const TorreView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
-                    <AppHeader />
-                    <main className="p-6 space-y-6 -mt-4 relative z-0 flex-1">
-                        {/* Tesorería Desglosada */}
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo Total Consolidado</p>
-                                    <h2 className="text-3xl font-black text-[#0D1B4B] tracking-tighter mt-1">$4.240.500</h2>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                <div className="text-center border-r border-slate-200">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Alquileres</p>
-                                    <p className="text-xs font-black text-slate-800">$3.000k</p>
-                                </div>
-                                <div className="text-center border-r border-slate-200">
-                                    <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Comisiones</p>
-                                    <p className="text-xs font-black text-emerald-700">$1.200k</p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1">Intereses</p>
-                                    <p className="text-xs font-black text-indigo-700">$40.5k</p>
-                                </div>
-                            </div>
+            // Overlays
+            const [showMetrics, setShowMetrics] = useState(false);
+            const [activeWizard, setActiveWizard] = useState(null); // 'propiedad', 'usuario', 'contrato'
+            const [selectedEntity, setSelectedEntity] = useState(null); // Para modal ABM
 
-                            <div className="flex flex-col gap-2">
-                                <button onClick={() => setWithdrawMode('dueños')} className="w-full bg-[#0D1B4B] text-white py-3.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg flex justify-center items-center gap-2 active:scale-95 transition-all">
-                                    <Icon name="send" size={14}/> Derivar Alquileres a Dueños
-                                </button>
-                                <button onClick={() => setWithdrawMode('comisiones')} className="w-full bg-emerald-50 text-emerald-700 border border-emerald-200 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-                                    Retirar Mis Comisiones
-                                </button>
+            // --- VISTA 1: INICIO (DASHBOARD & TESORERÍA) ---
+            const InicioView = () => (
+                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in">
+                    <header className="p-6 bg-slate-900 text-white flex justify-between items-center rounded-b-[2.5rem] shadow-xl relative z-10">
+                        <div className="flex items-center gap-3 mt-4">
+                            <div className="w-12 h-12 rounded-full border-2 border-[#00D1FF] overflow-hidden bg-slate-800 flex-shrink-0 relative">
+                                <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" alt="Admin" className="w-full h-full object-cover" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-black leading-tight tracking-tight">Estudio Raíces</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Admin Partner</p>
+                            </div>
+                        </div>
+                        <button className="relative w-10 h-10 flex items-center justify-center bg-slate-800 rounded-xl mt-4">
+                            <Icon name="bell" size={20} className="text-slate-300" />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse"></span>
+                        </button>
+                    </header>
+
+                    <main className="p-6 space-y-6 -mt-4 relative z-0">
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm space-y-4">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bolsillo Honorarios</p>
+                                <h2 className="text-3xl font-black text-[#0D1B4B] tracking-tighter mt-1">$1.240.500</h2>
+                            </div>
+                            <div className="flex gap-2">
+                                <button className="flex-1 bg-[#0055DD] text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-all">Retirar</button>
+                                <button className="w-12 h-12 bg-blue-50 text-[#0055DD] rounded-xl flex items-center justify-center active:scale-95 transition-all"><Icon name="history" size={18} /></button>
                             </div>
                         </div>
 
-                        {/* Torre Métricas Rápidas */}
                         <div className="space-y-3">
                             <div className="flex justify-between items-center px-1">
                                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Indicadores de Cartera</h4>
-                                <button onClick={() => setActiveTab('propiedades')} className="text-[10px] font-black text-[#0055DD] uppercase bg-blue-50 px-2 py-1 rounded">Ver todo</button>
+                                <button onClick={() => setShowMetrics(true)} className="text-[10px] font-bold text-[#0055DD] uppercase bg-blue-50 px-2 py-1 rounded">Ver todo</button>
                             </div>
                             <div className="grid grid-cols-3 gap-3">
-                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
-                                    <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2"><Icon name="check-circle-2" size={16}/></span>
-                                    <h5 className="text-xl font-black text-slate-800">42</h5>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Activas</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center">
-                                    <span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-2"><Icon name="key" size={16}/></span>
-                                    <h5 className="text-xl font-black text-slate-800">3</h5>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Vacantes</p>
-                                </div>
-                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center border-b-2 border-b-rose-500">
-                                    <span className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-2"><Icon name="alert-triangle" size={16}/></span>
-                                    <h5 className="text-xl font-black text-slate-800">2</h5>
-                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">En Mora</p>
-                                </div>
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center"><span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-2"><Icon name="check-circle-2" size={16}/></span><h5 className="text-xl font-black text-slate-800">42</h5><p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Activas</p></div>
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center"><span className="w-8 h-8 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-2"><Icon name="key" size={16}/></span><h5 className="text-xl font-black text-slate-800">3</h5><p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Vacantes</p></div>
+                                <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-col items-center text-center border-b-2 border-b-rose-500"><span className="w-8 h-8 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-2"><Icon name="alert-triangle" size={16}/></span><h5 className="text-xl font-black text-slate-800">2</h5><p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">En Mora</p></div>
                             </div>
                         </div>
 
-                        {/* Tarjetas de Acción / Atención */}
-                        <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Atención Requerida</h4>
-                            
-                            <div className="bg-white p-4 rounded-[1.5rem] border shadow-sm border-l-4 border-l-rose-500 flex items-start gap-4">
-                                <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
-                                    <Icon name="clock-3" size={20} />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-start">
-                                        <h5 className="font-black text-slate-800 text-xs">Mora: Av. Colón 450</h5>
-                                        <span className="text-[9px] font-black bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded">Día 6</span>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 mt-1 leading-tight">Inquilino: L. Martínez. La caución está lista para gatillarse.</p>
-                                    <div className="flex gap-2 mt-3">
-                                        <button className="flex-1 bg-rose-600 text-white py-2 rounded-lg font-black text-[9px] uppercase tracking-wider shadow-sm">Ejecutar Póliza</button>
-                                    </div>
-                                </div>
+                        <div className="bg-white p-4 rounded-[1.5rem] border shadow-sm border-l-4 border-l-amber-400 flex items-start gap-4">
+                            <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 shrink-0"><Icon name="wrench" size={20} /></div>
+                            <div className="flex-1">
+                                <div className="flex justify-between items-start"><h5 className="font-black text-slate-800 text-xs">Veredicto Pendiente</h5><span className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Hace 2h</span></div>
+                                <p className="text-[10px] text-slate-500 mt-1 leading-tight">Caseros 1230. Ticket de Fuga de Agua requiere derivación al propietario.</p>
+                                <button className="w-full mt-3 bg-slate-900 text-white py-2.5 rounded-lg font-black text-[9px] uppercase tracking-wider shadow-sm flex justify-center items-center gap-2">Revisar <Icon name="arrow-right" size={12}/></button>
                             </div>
                         </div>
                     </main>
                 </div>
             );
 
+            // --- VISTA 2: PROPIEDADES ---
             const PropiedadesView = () => {
-                const [filter, setFilter] = useState('Todas');
-                const props = [
-                    { addr: "Av. Colón 450, 10C", status: "Activa", c: "emerald" },
-                    { addr: "Caseros 1230, 4B", status: "Vacante", c: "amber" },
-                    { addr: "San Martín 150", status: "Mora", c: "rose" },
-                    { addr: "Velez Sarsfield 30", status: "Activa", c: "emerald" }
-                ];
-                const filtered = filter === 'Todas' ? props : props.filter(p => p.status === filter);
+                const [search, setSearch] = useState('');
+                const filtered = mockProps.filter(p => p.addr.toLowerCase().includes(search.toLowerCase()) || p.owner.toLowerCase().includes(search.toLowerCase()));
 
                 return (
-                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
-                        <AppHeader />
-                        <div className="p-6 space-y-4 relative z-0 -mt-4">
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-                                {['Todas', 'Activa', 'Vacante', 'Mora'].map(f => (
-                                    <button key={f} onClick={() => setFilter(f)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition ${filter === f ? 'bg-[#0D1B4B] text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200'}`}>{f}</button>
-                                ))}
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-[#F0F2F6]">
+                        <header className="p-6 bg-white border-b sticky top-0 z-10 flex flex-col gap-4">
+                            <h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Propiedades</h2>
+                            <div className="relative">
+                                <Icon name="search" className="absolute left-3 top-3 text-slate-300" size={16} />
+                                <input type="text" placeholder="Buscar por dirección o dueño..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm outline-none focus:border-[#0055DD] transition-all"/>
                             </div>
-                            <div className="space-y-3">
-                                {filtered.map((p, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex justify-between items-center">
-                                        <div className="flex items-center gap-4">
-                                            <div className={`w-10 h-10 bg-${p.c}-50 text-${p.c}-600 rounded-xl flex items-center justify-center`}><Icon name="home" size={20}/></div>
-                                            <div>
-                                                <h4 className="font-black text-slate-800 text-xs">{p.addr}</h4>
-                                                <p className="text-[10px] text-slate-500 mt-0.5">Propiedad {i+1}</p>
-                                            </div>
-                                        </div>
-                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded bg-${p.c}-50 text-${p.c}-600`}>{p.status}</span>
+                        </header>
+                        <div className="p-6 space-y-3">
+                            {filtered.map((prop, i) => (
+                                <div key={i} onClick={() => setSelectedEntity({type: 'propiedad', data: prop})} className="bg-white p-4 rounded-2xl border shadow-sm cursor-pointer active:scale-95 transition-transform">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="font-black text-slate-800 text-sm">{prop.addr}</h4>
+                                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${prop.status==='Alquilada'?'bg-emerald-50 text-emerald-600':prop.status==='Vacante'?'bg-amber-50 text-amber-600':'bg-rose-50 text-rose-600'}`}>{prop.status}</span>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const UsuariosView = () => {
-                const [tab, setTab] = useState('Inquilinos');
-                return (
-                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
-                        <AppHeader />
-                        <div className="p-6 space-y-4 relative z-0 -mt-4">
-                            <div className="flex bg-slate-200/50 p-1 rounded-xl">
-                                {['Inquilinos', 'Propietarios'].map(t => (
-                                    <button key={t} onClick={() => setTab(t)} className={`flex-1 py-2 rounded-lg text-xs font-black uppercase transition ${tab === t ? 'bg-white text-[#0D1B4B] shadow-sm' : 'text-slate-500'}`}>{t}</button>
-                                ))}
-                            </div>
-                            <div className="space-y-3">
-                                {[1,2,3].map((u, i) => (
-                                    <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 overflow-hidden"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${tab}${i}`} className="w-full h-full"/></div>
-                                            <div>
-                                                <h4 className="font-black text-slate-800 text-xs">{tab === 'Inquilinos' ? 'Juan Pérez' : 'Marcos Galperin'}</h4>
-                                                <p className="text-[10px] text-slate-500 mt-0.5">Score: {850 + i*10} pts</p>
-                                            </div>
-                                        </div>
-                                        <Icon name="chevron-right" size={16} className="text-slate-300"/>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
-            };
-
-            const DocsView = () => (
-                <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in flex flex-col">
-                    <AppHeader />
-                    <div className="p-6 space-y-4 relative z-0 -mt-4">
-                        <h2 className="text-lg font-black text-[#0D1B4B] tracking-tighter mb-4">Contratos Activos</h2>
-                        <div className="space-y-3">
-                            {[1,2,3].map((d, i) => (
-                                <div key={i} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Icon name="file-text" size={20}/></div>
-                                        <div>
-                                            <h4 className="font-black text-slate-800 text-xs">CNT-890{i}</h4>
-                                            <p className="text-[10px] text-slate-500 mt-0.5">Vence: 12/2026</p>
-                                        </div>
-                                    </div>
-                                    <Icon name="download" size={18} className="text-[#0055DD]"/>
+                                    <p className="text-[10px] font-medium text-slate-500">Dueño: {prop.owner}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
-            );
+                );
+            };
 
-            // --- DRAWER DE PERFIL DE USUARIO ---
-            const ProfileDrawer = () => {
-                if (!isProfileOpen) return null;
+            // --- VISTA 3: USUARIOS ---
+            const UsuariosView = () => {
+                const [search, setSearch] = useState('');
+                const filtered = mockUsers.filter(u => u.name.toLowerCase().includes(search.toLowerCase()) || u.role.toLowerCase().includes(search.toLowerCase()));
+
                 return (
-                    <div className="absolute inset-0 z-50 flex flex-col justify-end bg-slate-900/60 backdrop-blur-sm animate-in">
-                        <div className="bg-white w-full rounded-t-[2.5rem] p-6 shadow-2xl slide-up flex flex-col h-[85vh]">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className="flex gap-4 items-center">
-                                    <div className="w-16 h-16 rounded-full border-2 border-[#0055DD] overflow-hidden">
-                                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&q=80" className="w-full h-full object-cover" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-black text-[#0D1B4B] tracking-tighter leading-none">Estudio Raíces</h3>
-                                        <p className="text-xs text-slate-400 font-medium mt-1">admin@raices.com</p>
-                                    </div>
-                                </div>
-                                <button onClick={() => setIsProfileOpen(false)} className="w-8 h-8 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center"><Icon name="x" size={16}/></button>
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-[#F0F2F6]">
+                        <header className="p-6 bg-white border-b sticky top-0 z-10 flex flex-col gap-4">
+                            <h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Usuarios</h2>
+                            <div className="relative">
+                                <Icon name="search" className="absolute left-3 top-3 text-slate-300" size={16} />
+                                <input type="text" placeholder="Buscar inquilino o dueño..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm outline-none focus:border-[#0055DD] transition-all"/>
                             </div>
+                        </header>
+                        <div className="p-6 space-y-3">
+                            {filtered.map((u, i) => (
+                                <div key={i} onClick={() => setSelectedEntity({type: 'usuario', data: u})} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-[#0055DD]">{u.name.charAt(0)}</div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 text-xs">{u.name}</h4>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase">{u.role}</p>
+                                        </div>
+                                    </div>
+                                    <Icon name="chevron-right" size={18} className="text-slate-300"/>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
 
-                            <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
-                                <div>
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">Mi Equipo</h4>
-                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                        <button className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center"><Icon name="user-plus" size={16}/></div>
-                                                <span className="text-sm font-bold text-slate-700">Invitar Nuevo Administrador</span>
-                                            </div>
-                                        </button>
+            // --- VISTA 4: CONTRATOS ---
+            const ContratosView = () => {
+                const [search, setSearch] = useState('');
+                const filtered = mockContracts.filter(c => c.prop.toLowerCase().includes(search.toLowerCase()) || c.id.toLowerCase().includes(search.toLowerCase()));
+
+                return (
+                    <div className="flex-1 overflow-y-auto no-scrollbar pb-32 animate-in bg-[#F0F2F6]">
+                        <header className="p-6 bg-white border-b sticky top-0 z-10 flex flex-col gap-4">
+                            <h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Contratos</h2>
+                            <div className="relative">
+                                <Icon name="search" className="absolute left-3 top-3 text-slate-300" size={16} />
+                                <input type="text" placeholder="Buscar ID o dirección..." value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl text-sm outline-none focus:border-[#0055DD] transition-all"/>
+                            </div>
+                        </header>
+                        <div className="p-6 space-y-3">
+                            {filtered.map((c, i) => (
+                                <div key={i} onClick={() => setSelectedEntity({type: 'contrato', data: c})} className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center"><Icon name="file-text" size={20}/></div>
+                                        <div>
+                                            <h4 className="font-black text-slate-800 text-xs">{c.prop}</h4>
+                                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{c.id} • {c.date}</p>
+                                        </div>
                                     </div>
+                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${c.status==='Vigente'?'bg-emerald-50 text-emerald-600':'bg-rose-50 text-rose-600'}`}>{c.status}</span>
                                 </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- OVERLAY: FULL METRICS (Ver todo) ---
+            const FullMetricsModal = () => {
+                if (!showMetrics) return null;
+                return (
+                    <div className="absolute inset-0 z-[100] bg-[#F0F2F6] flex flex-col animate-in slide-up">
+                        <header className="p-6 bg-white flex justify-between items-center border-b">
+                            <div><h2 className="text-xl font-black text-[#0D1B4B] tracking-tighter">Métricas de Cartera</h2></div>
+                            <button onClick={() => setShowMetrics(false)} className="bg-slate-100 p-2 rounded-full text-slate-500"><Icon name="x" size={20}/></button>
+                        </header>
+                        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm text-center">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Recaudación Bruta</p>
+                                <h3 className="text-3xl font-black text-slate-900 mt-1">$12.540.800</h3>
+                            </div>
+                            <div className="bg-slate-900 p-6 rounded-[2rem] shadow-xl text-center text-white relative overflow-hidden">
+                                <Icon name="zap" className="absolute right-[-10px] top-[-10px] text-white/5" size={80}/>
+                                <p className="text-[10px] font-black text-[#00D1FF] uppercase tracking-widest relative z-10">Mis Ganancias (Comisiones)</p>
+                                <h3 className="text-3xl font-black mt-1 relative z-10">$840.500</h3>
+                            </div>
+                            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm text-center">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saldo de Dueños</p>
+                                <h3 className="text-3xl font-black text-slate-800 mt-1">$7.820.000</h3>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- OVERLAY: ABM ENTIDAD ---
+            const EntityDetailModal = () => {
+                if (!selectedEntity) return null;
+                const { type, data } = selectedEntity;
+                const title = type === 'propiedad' ? data.addr : type === 'usuario' ? data.name : data.id;
+                const subtitle = type === 'propiedad' ? data.type : type === 'usuario' ? data.role : data.prop;
+
+                return (
+                    <div className="absolute inset-0 z-[150] bg-slate-900/60 backdrop-blur-sm flex flex-col justify-end animate-in fade-in">
+                        <div className="bg-white w-full h-[90vh] rounded-t-[2.5rem] shadow-2xl flex flex-col slide-up overflow-hidden">
+                            <header className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
                                 <div>
-                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-2">Seguridad</h4>
-                                    <div className="bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden">
-                                        <button className="w-full p-4 flex items-center justify-between hover:bg-slate-100 transition border-b border-slate-100">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center"><Icon name="lock" size={16}/></div>
-                                                <span className="text-sm font-bold text-slate-700">Resetear Contraseña</span>
-                                            </div>
-                                        </button>
-                                    </div>
+                                    <span className="text-[9px] font-black text-[#0055DD] uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded">{type}</span>
+                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight mt-2">{title}</h2>
+                                    <p className="text-xs font-bold text-slate-500 uppercase mt-1">{subtitle}</p>
                                 </div>
-                                <div className="pt-4">
-                                    <button onClick={() => {alert("Deslogueado."); setIsProfileOpen(false);}} className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-widest mb-3 hover:bg-slate-200 transition">
-                                        Cerrar Sesión
-                                    </button>
-                                    <button onClick={() => alert("Solicitud de baja en proceso.")} className="w-full py-4 text-rose-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-rose-50 border border-transparent transition">
-                                        Dar de Baja Cuenta
-                                    </button>
+                                <button onClick={() => setSelectedEntity(null)} className="p-2 bg-white border border-slate-200 rounded-full text-slate-400"><Icon name="x" size={20}/></button>
+                            </header>
+                            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                                {/* Datos simulados genéricos */}
+                                <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
+                                    <div className="flex justify-between border-b pb-2"><span className="text-xs font-bold text-slate-400 uppercase">Estado</span><span className="text-xs font-black text-slate-800">{data.status}</span></div>
+                                    {type === 'propiedad' && <div className="flex justify-between border-b pb-2"><span className="text-xs font-bold text-slate-400 uppercase">Dueño</span><span className="text-xs font-black text-slate-800">{data.owner}</span></div>}
+                                    {type === 'usuario' && <div className="flex justify-between border-b pb-2"><span className="text-xs font-bold text-slate-400 uppercase">Email</span><span className="text-xs font-black text-slate-800">{data.email}</span></div>}
+                                    {type === 'contrato' && <div className="flex justify-between border-b pb-2"><span className="text-xs font-bold text-slate-400 uppercase">Monto</span><span className="text-xs font-black text-emerald-600">{data.rent}</span></div>}
+                                </div>
+
+                                <div className="pt-4 flex flex-col gap-3">
+                                    <button className="w-full bg-[#0055DD] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2"><Icon name="edit" size={16}/> Editar Datos</button>
+                                    <button className="w-full bg-white text-rose-500 border border-rose-200 py-4 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-50"><Icon name="power-off" size={16}/> Dar de Baja / Pausar</button>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                );
+            };
+
+            // --- WIZARD: CHAT IA (Unificado para las altas) ---
+            const ChatWizard = () => {
+                if (!activeWizard) return null;
+                
+                const [step, setStep] = useState(0);
+                const [input, setInput] = useState('');
+                const [isBotTyping, setIsBotTyping] = useState(false);
+                const scrollRef = useRef(null);
+                
+                // Conversación simulada según el tipo
+                const flow = {
+                    propiedad: [
+                        { bot: "¡Hola! Para dar de alta la propiedad, ingresá la dirección exacta." },
+                        { bot: "Perfecto. ¿Querés detallar algún extra? (Ej: Cochera, SUM)." },
+                        { bot: "¡Propiedad registrada exitosamente!" }
+                    ],
+                    usuario: [
+                        { bot: "Vamos a crear un usuario. ¿Cuál es su nombre y apellido?" },
+                        { bot: "¿Me pasas su correo electrónico?" },
+                        { bot: "Por último, ¿qué rol tendrá? (Inquilino / Propietario)." },
+                        { bot: "¡Usuario registrado e invitado!" }
+                    ],
+                    contrato: [
+                        { bot: "Iniciemos el contrato. ¿Cuál es la dirección de la propiedad?" },
+                        { bot: "¿A nombre de qué inquilino estará?" },
+                        { bot: "¿Cuál es el monto mensual del alquiler?" },
+                        { bot: "¡Borrador de contrato generado y enviado!" }
+                    ]
+                }[activeWizard];
+
+                const [messages, setMessages] = useState([{ type: 'bot', text: flow[0].bot }]);
+
+                useEffect(() => {
+                    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                }, [messages, isBotTyping]);
+
+                const handleSend = () => {
+                    if (!input.trim()) return;
+                    const val = input.trim();
+                    setInput('');
+                    
+                    setMessages(prev => [...prev, { type: 'user', text: val }]);
+                    
+                    if (step < flow.length - 1) {
+                        setIsBotTyping(true);
+                        setTimeout(() => {
+                            setIsBotTyping(false);
+                            setStep(step + 1);
+                            setMessages(prev => [...prev, { type: 'bot', text: flow[step + 1].bot }]);
+                        }, 800);
+                    }
+                };
+
+                const isFinished = step >= flow.length - 1 && !isBotTyping;
+
+                return (
+                    <div className="absolute inset-0 z-[200] bg-white flex flex-col animate-in slide-in-from-right">
+                        <header className="p-6 border-b border-slate-50 flex justify-between items-center bg-white shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-[#0055DD]">
+                                    <Icon name="sparkles" size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-sm font-black uppercase tracking-widest text-slate-800 leading-none">Asistente IA</h2>
+                                    <p className="text-[10px] text-[#0055DD] font-bold uppercase mt-1">Alta de {activeWizard}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setActiveWizard(null)} className="p-2 bg-slate-50 rounded-full text-slate-400"><Icon name="x" size={20}/></button>
+                        </header>
+                        
+                        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#F0F2F6] no-scrollbar pb-32">
+                            {messages.map((m, i) => (
+                                <div key={i} className={m.type === 'bot' ? 'bot-bubble' : 'user-bubble animate-in'}>
+                                    {m.text}
+                                </div>
+                            ))}
+                            {isBotTyping && (
+                                <div className="bot-bubble flex items-center gap-1.5 py-4 w-max">
+                                    <div className="typing-dot"></div><div className="typing-dot"></div><div className="typing-dot"></div>
+                                </div>
+                            )}
+                            {isFinished && (
+                                <div className="pt-6 animate-in">
+                                    <button onClick={() => setActiveWizard(null)} className="w-full bg-[#0055DD] text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest shadow-xl">Cerrar Asistente</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {!isFinished && !isBotTyping && (
+                            <footer className="p-6 bg-white border-t border-slate-100 absolute bottom-0 w-full">
+                                <div className="flex gap-3">
+                                    <input type="text" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&handleSend()} placeholder="Escribe aquí..." className="flex-1 bg-slate-50 px-5 py-4 rounded-2xl text-sm font-bold outline-none focus:ring-2 focus:ring-[#0055DD]" autoFocus/>
+                                    <button onClick={handleSend} className="w-14 h-14 bg-[#0055DD] text-white rounded-[1.2rem] flex items-center justify-center shadow-lg active:scale-95 transition-transform shrink-0"><Icon name="send" size={20}/></button>
+                                </div>
+                            </footer>
+                        )}
                     </div>
                 );
             };
@@ -408,19 +416,19 @@
                 return (
                     <div className="absolute inset-0 z-40 flex items-end justify-center pb-28 bg-slate-900/40 backdrop-blur-sm slide-up" onClick={() => setIsFabOpen(false)}>
                         <div className="bg-white w-[90%] rounded-3xl p-6 shadow-2xl flex flex-col gap-4" onClick={(e) => e.stopPropagation()}>
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-2">Alta Rápida</h3>
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest text-center mb-2">Crear Nuevo Registro</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <button onClick={() => { alert("Iniciando Alta de Propiedad"); setIsFabOpen(false); }} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center gap-2">
-                                    <Icon name="home" size={24} className="text-emerald-600"/>
+                                <button onClick={() => { setActiveWizard('propiedad'); setIsFabOpen(false); }} className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex flex-col items-center justify-center gap-2 hover:bg-emerald-100 transition">
+                                    <Icon name="building-2" size={24} className="text-emerald-600"/>
                                     <span className="text-[10px] font-black text-emerald-800 uppercase">Propiedad</span>
                                 </button>
-                                <button onClick={() => { alert("Iniciando Alta de Usuario"); setIsFabOpen(false); }} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center justify-center gap-2">
+                                <button onClick={() => { setActiveWizard('usuario'); setIsFabOpen(false); }} className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col items-center justify-center gap-2 hover:bg-blue-100 transition">
                                     <Icon name="user-plus" size={24} className="text-[#0055DD]"/>
-                                    <span className="text-[10px] font-black text-[#0055DD] uppercase">Inq/Dueño</span>
+                                    <span className="text-[10px] font-black text-[#0055DD] uppercase">Usuario</span>
                                 </button>
-                                <button onClick={() => { alert("Iniciando Alta de Contrato"); setIsFabOpen(false); }} className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center gap-2 col-span-2">
+                                <button onClick={() => { setActiveWizard('contrato'); setIsFabOpen(false); }} className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100 flex flex-col items-center justify-center gap-2 hover:bg-indigo-100 transition col-span-2">
                                     <Icon name="file-signature" size={24} className="text-indigo-600"/>
-                                    <span className="text-[10px] font-black text-indigo-800 uppercase">Nuevo Contrato</span>
+                                    <span className="text-[10px] font-black text-indigo-800 uppercase">Contrato Nuevo</span>
                                 </button>
                             </div>
                         </div>
@@ -432,41 +440,47 @@
                 <div className="h-screen w-full flex flex-col items-center justify-center p-4 bg-[#cbd5e1]">
                     <div className="mobile-shell rounded-[3rem] border-[6px] border-white ring-1 ring-slate-200 shadow-2xl">
                         
-                        {/* Contenido Dinámico */}
-                        {activeTab === 'torre' && <TorreView />}
+                        {/* Area de Contenido Dinámico */}
+                        {activeTab === 'inicio' && <InicioView />}
                         {activeTab === 'propiedades' && <PropiedadesView />}
                         {activeTab === 'usuarios' && <UsuariosView />}
-                        {activeTab === 'docs' && <DocsView />}
+                        {activeTab === 'contratos' && <ContratosView />}
+                        {activeTab === 'perfil' && <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in opacity-40"><Icon name="menu" size={64} className="mb-4"/><h2 className="font-black text-xl uppercase tracking-widest">Menú / Perfil</h2></div>}
 
-                        <ProfileDrawer />
-                        <WithdrawModal />
+                        {/* Modales y Overlays */}
                         <FabMenu />
+                        <FullMetricsModal />
+                        <EntityDetailModal />
+                        <ChatWizard />
 
-                        {/* Botón Flotante (FAB) */}
-                        <button onClick={() => setIsFabOpen(!isFabOpen)} className={`absolute bottom-[5rem] left-1/2 -translate-x-1/2 w-14 h-14 bg-[#0055DD] text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(0,85,221,0.5)] z-40 transition-transform duration-300 ${isFabOpen ? 'rotate-45 bg-rose-500 shadow-rose-500/50' : 'active:scale-95'}`}>
+                        {/* Botón de Acción Flotante (FAB) */}
+                        <button 
+                            onClick={() => setIsFabOpen(!isFabOpen)}
+                            className={`absolute bottom-[5rem] left-1/2 -translate-x-1/2 w-14 h-14 bg-[#0055DD] text-white rounded-full flex items-center justify-center shadow-[0_10px_25px_rgba(0,85,221,0.5)] z-50 transition-transform duration-300 ${isFabOpen ? 'rotate-45 bg-rose-500 shadow-rose-500/50' : 'active:scale-95 hover:-translate-y-1'}`}
+                        >
                             <Icon name="plus" size={28} />
                         </button>
 
-                        {/* Nav inferior reformulado */}
-                        <nav className="absolute bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 px-6 py-4 flex justify-between items-center pb-8 z-30">
-                            <button onClick={() => {setActiveTab('torre'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 ${activeTab === 'torre' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
-                                <Icon name="layout-dashboard" size={22} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">Torre</span>
+                        {/* Nav inferior (5 ítems) */}
+                        <nav className="absolute bottom-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 px-4 py-4 flex justify-between items-center pb-8 z-30">
+                            <button onClick={() => {setActiveTab('inicio'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors flex-1 ${activeTab === 'inicio' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                                <Icon name="layout-dashboard" size={22} className={activeTab === 'inicio' ? 'fill-blue-50' : ''}/>
+                                <span className="text-[8px] font-black uppercase tracking-wider">Inicio</span>
                             </button>
-                            <button onClick={() => {setActiveTab('propiedades'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pr-2 ${activeTab === 'propiedades' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
-                                <Icon name="building-2" size={22} />
+                            <button onClick={() => {setActiveTab('propiedades'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors flex-1 ${activeTab === 'propiedades' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                                <Icon name="building-2" size={22} className={activeTab === 'propiedades' ? 'fill-blue-50' : ''}/>
                                 <span className="text-[8px] font-black uppercase tracking-wider">Props</span>
                             </button>
                             
-                            <div className="w-10"></div> {/* Espacio FAB */}
+                            <div className="flex-1"></div> {/* Espacio FAB */}
 
-                            <button onClick={() => {setActiveTab('usuarios'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 pl-2 ${activeTab === 'usuarios' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
-                                <Icon name="users" size={22} />
+                            <button onClick={() => {setActiveTab('usuarios'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors flex-1 ${activeTab === 'usuarios' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                                <Icon name="users" size={22} className={activeTab === 'usuarios' ? 'fill-blue-50' : ''}/>
                                 <span className="text-[8px] font-black uppercase tracking-wider">Usrs</span>
                             </button>
-                            <button onClick={() => {setActiveTab('docs'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors w-12 ${activeTab === 'docs' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
-                                <Icon name="file-text" size={22} />
-                                <span className="text-[8px] font-black uppercase tracking-wider">Docs</span>
+                            <button onClick={() => {setActiveTab('contratos'); setIsFabOpen(false);}} className={`flex flex-col items-center gap-1 transition-colors flex-1 ${activeTab === 'contratos' ? 'text-[#0055DD]' : 'text-slate-400'}`}>
+                                <Icon name="file-text" size={22} className={activeTab === 'contratos' ? 'fill-blue-50' : ''}/>
+                                <span className="text-[8px] font-black uppercase tracking-wider">Contratos</span>
                             </button>
                         </nav>
                     </div>
